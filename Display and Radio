@@ -1,0 +1,180 @@
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h> #include <Adafruit_SSD1306.h>
+#define OLED_RESET 4
+Adafruit_SSD1306 display(OLED_RESET);
+#define NUMFLAKES 10 #define XPOS 0 #define YPOS 1 #define DELTAY 2
+double freq=102.5;
+#define LOGO16_GLCD_HEIGHT 16 #define LOGO16_GLCD_WIDTH 16
+#include <Wire.h>
+#include <TEA5767Radio.h>
+TEA5767Radio radio = TEA5767Radio();
+static const unsigned char PROGMEM logo16_glcd_bmp[] = { B00000000, B11000000,
+B00000001, B11000000, B00000001, B11000000, B00000011, B11100000, B11110011, B11100000, B11111110, B11111000, B01111110, B11111111, B00110011, B10011111, B00011111, B11111100,
+
+B00001101, B01110000, B00011011, B10100000, B00111111, B11100000, B00111111, B11110000, B01111100, B11110000, B01110000, B01110000, B00000000, B00110000 };
+#if (SSD1306_LCDHEIGHT != 32)
+#error("Height incorrect, please fix Adafruit_SSD1306.h! ");
+#endif
+double val;
+void setup() { Serial.begin(9600);
+pinMode(4,INPUT_PULLUP);
+pinMode(5,INPUT_PULLUP);
+pinMode(6,INPUT_PULLUP);
+ Wire.begin();
+  radio.setFrequency(freq);
+//IMPORTANT:
+//Pin assignments:
+//D4: Up
+//D5: Down
+//D6: Menu select
+//A0: Signal bar
+//A2: Tuner (to be added)
+//A3: Volume (acts as indicator for LM386 gain
+
+setting)
+//Diplay: SDA to A4, SCL to pin A5
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // initialize with the I2C addr 0x3C (for the 128x32)
+  display.clearDisplay();
+//startup screen String loadbar= "|";
+ display.invertDisplay(0);
+ display.setTextSize(1);
+  display.setTextColor(WHITE);
+ display.setCursor(15,4);
+display.println("< INITIALIZING >"); display.display();
+for (int l=0; l<30; l++){ display.setCursor(16.5+(l*3),20);
+  display.println(loadbar);
+  display.display();
+delay(50); }
+  delay(1500);
+  display.clearDisplay();
+}
+bool b1p=false;bool b2p=false; bool b3p=false; bool sbp=false;//sby=select bar y pos, sbp= select bar press int menu=3;
+int sby=2;
+int totalmenu;
+double tuner;
+
+//[r][c]
+String menus [3][3]= {{"FM radio", "AM Radio", "Transceiver"}, {"Bluetooth", "Stats", "Settings"}, {"Credits","" ,"" }};
+void loop() {
+//tuner=analogRead(2);
+//tuner=tuner/1023;
+//these statements only let the button cycle once until they are pressed again
+if ((!(digitalRead(4)))==true && b1p==false){ if ((sby>1)&&(menu>0)&&(menu<20)){
+sby--;
+} b1p=true;
+}
+else if (digitalRead(4)==true){
+b1p=false; }
+if ((!(digitalRead(5)))==true && b2p==false){ if ((sby<7)&&(menu>0)&&(menu<20)){
+sby++; }
+b2p=true; }
+else if (digitalRead(5)==true){ b2p=false;
+}
+if ((!(digitalRead(6)))==true && b3p==false){
+if (!(sby==0)){
+
+switch (sby){ case 1: sby=0;
+menu=21; break; case 7: sby=0; menu=27; break; default: break;
+} b3p=true;
+} }
+if ((!(digitalRead(6)))==true && b3p==false){ if (sby==0){
+switch (menu){ default:
+  sby=menu-20;
+ break;
+} }
+b3p=true; }
+if (digitalRead(6)==true){ b3p=false;
+}
+//menu scroll controls
+
+switch (sby){ case 1:
+case 2: case 3:
+menu=1;
+break; case 4: case 5: case 6:
+menu=2;
+break; case 7: case 8: case 9:
+menu=3;
+    break;
+  default:
+  break;
+}
+ switch(menu)
+ {
+   case 1:
+   display.setTextSize(1);
+display.setTextColor(WHITE);
+display.setCursor(4,2); display.println(menus [0][0]);
+display.setCursor(4,13); display.println(menus [0][1]);
+display.setCursor(4,23);
+
+display.println(menus [0][2]); break;
+case 2: display.setTextSize(1);
+  display.setTextColor(WHITE);
+display.setCursor(4,2); display.println(menus [1][0]);
+display.setCursor(4,13); display.println(menus [1][1]);
+display.setCursor(4,23); display.println(menus [1][2]);
+break;
+case 3:
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+display.setCursor(4,2); display.println(menus [2][0]);
+display.setCursor(4,13); display.println(menus [2][1]);
+display.setCursor(4,23); display.println(menus [2][2]);
+    break;
+case 21:
+display.setTextSize(1);
+  display.setCursor(3,23);
+   display.setTextColor(WHITE);
+  display.println("Back");
+  wavebar();
+  volume();
+
+ break;
+case 27:
+display.setTextSize(1);
+  display.setCursor(3,23);
+   display.setTextColor(WHITE);
+  display.println("Back");
+ display.setTextSize(1);
+  display.setCursor(0,0);
+display.setTextColor(WHITE); display.println("Radio developed by
+and ");
+  display.setCursor(29,16);
+display.println(" Igor Shanava"); break;
+    default:
+     display.setTextSize(1);
+  display.setTextColor(WHITE);
+display.setCursor(0,0); display.println("You should not get
+Michael Brlan
+this message; please check code for menu select errors.");
+break; }
+switch(sby){ case 0:
+display.drawRoundRect(0, 21, 30, 12, 3, WHITE); break;
+case 1: case 4: case 7:
+display.drawRoundRect(0, 0, 72, 12, 3, WHITE); break;
+
+case 2: case 5: case 8:
+display.drawRoundRect(0, 11, 72, 12, 3, WHITE); break;
+case 3: case 6: case 9:
+display.drawRoundRect(0, 20, 72, 12, 3, WHITE); break;
+default:
+break; }
+ display.display();
+display.clearDisplay();
+}
+//function for drawing single columns of oscilloscope waveform
+void wavebar(void){
+double avin= analogRead(0);
+double waveheight=((avin/1023)*20); display.fillRect(80, 20-waveheight, 10, 30, WHITE); display.fillRect(80, 20, 10, 15, BLACK);
+  display.setCursor(74,22);
+  display.println("WAVE");
+}
+void volume(void){
+
+double vol=analogRead(3);
+vol=vol/1023;
+display.fillRect(108, 20-(vol*20), 10, 30, WHITE); display.fillRect(108, 20, 10, 15, BLACK);
+   display.setCursor(105,22);
+  display.println("VOL");
+}
